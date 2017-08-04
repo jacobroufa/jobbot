@@ -1,34 +1,47 @@
-const sheetsy = require('sheetsy');
 const express = require('express');
 const bodyParser = require('body-parser');
 
-const slackVerify = process.env.SLACK_VERIFY;
-const slackAuth = process.env.SLACK_TOKEN;
-const sheetAuth = process.env.SHEET_TOKEN;
+const utils = require('./utils');
+const { listUsers, registerUser, deactivateUser, help } = require('./actions');
 
-console.log(slackVerify);
+const slackVerify = process.env.SLACK_VERIFY;
 
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.post('/jobbot', (req, res) => {
-  let b = req.body;
-  let cmd = b.text.split(' ')[0];
+  const b = req.body;
+  const name = b.user_name;
+  const txt = b.text.split(' ');
+  const cmd = txt[0];
+  const subcmd = cmd === 'list' && txt[1];
+  const getListUsers = () => listUsers(subcmd ? txt : undefined);
 
-  console.log(b.user_name, cmd);
+  console.log(name, cmd);
 
   if (slackVerify === b.token) {
-    return res.json({
-      'response_type': 'in_channel',
-      'text': 'shut up Donny'
-    });
+    // TODO: figure out better way to assign synonyms in act()
+    const action = utils.act({
+      // list things (users, skills, etc), optionally filtered
+      'available': getListUsers,
+      'list': getListUsers,
+      // register yourself in this database
+      'activate': registerUser,
+      'register': registerUser,
+      // take yourself out of the active listing (maintaining registration)
+      'deactivate': deactivateUser,
+      // HALP MEEEEEEEEEEE!!!!!1one
+      'help': help
+    }, help, cmd);
+    console.log(action);
+    const { fn, response } = action();
+    console.log(fn, response);
+
+    return res.json(utils[fn](response));
   }
 
-  return res.json({
-    'response_type': 'ephemeral',
-    'text': 'yr on the wrong slack, foolio'
-  });
+  return res.json(utils.ephMsg('yr on the wrong slack, foolio'));
 });
 
 app.listen(3324, () => {
