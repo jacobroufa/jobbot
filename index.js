@@ -18,11 +18,9 @@ app.post('/jobbot', (req, res) => {
   const subcmd = cmd === 'list' && txt[1];
   const getListUsers = () => listUsers(subcmd ? txt : undefined);
 
-  console.log(name, cmd);
-
   if (slackVerify === b.token) {
     // TODO: figure out better way to assign synonyms in act()
-    const action = utils.act({
+    const { fn, response } = utils.act({
       // list things (users, skills, etc), optionally filtered
       'available': getListUsers,
       'list': getListUsers,
@@ -33,10 +31,7 @@ app.post('/jobbot', (req, res) => {
       'deactivate': deactivateUser,
       // HALP MEEEEEEEEEEE!!!!!1one
       'help': help
-    }, help, cmd);
-    console.log(action);
-    const { fn, response } = action();
-    console.log(fn, response);
+    }, help, cmd)();
 
     return res.json(utils[fn](response));
   }
